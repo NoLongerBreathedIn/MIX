@@ -78,11 +78,11 @@ int main(int argc, char **argv) {
       break;
     case STi:
       *mem(M) = mix_word_store_field(f,
-	  mix_short_to_word(rI[i]), *mem(M));
+				     mix_short_to_word(rI[i]), *mem(M));
       break;
     case STJ:
       *mem(M) = mix_word_store_field(f,
-	  mix_short_to_word(rJ), *mem(M));
+				     mix_short_to_word(rJ), *mem(M));
       break;
     case STZ:
       *mem(M) = mix_word_store_field(f, 0, *mem(M));
@@ -92,293 +92,303 @@ int main(int argc, char **argv) {
       switch(a) {
       case MIX_INT:
 	oflow |= mix_word_add_and_carry(rA,
-	    mix_word_get_field(f, *mem(M)), NULL, &rA);
+					mix_word_get_field(f, *mem(M)),
+					NULL, &rA);
 	break;
       case FLT:
 	rA = shorten(fadd(lengthen(rA), lengthen(*mem(M))));
 	break;
       case DBL:
 	split_double(fadd(combine_to_double(rA, rX),
-	    combine_to_double(*mem(M), *mem(mix_short_add(M, 1)))),
-	    &rA, &rX);
+			  combine_to_double(*mem(M),
+					    *mem(mix_short_add(M, 1)))),
+		     &rA, &rX);
 	break;
-      case MX:;
+      default:;
       }
       break;
-      case SUB:
-	a = misc_style[f];
-	switch(a) {
-	case MIX_INT:
-	  oflow |= mix_word_add_and_carry(rA,
-	      mix_word_negate(mix_word_get_field(f, *mem(M))),
-	      NULL, &rA);
-	  break;
-	case FLT:
-	  rA = shorten(fsub(lengthen(rA), lengthen(*mem(M))));
-	  break;
-	case DBL:
-	  split_double(fsub(combine_to_double(rA, rX),
-	      combine_to_double(*mem(M), *mem(mix_short_add(M, 1)))),
-	      &rA, &rX);
-	  break;
-	case MX:;
+    case SUB:
+      a = misc_style[f];
+      switch(a) {
+      case MIX_INT:
+	oflow |= mix_word_add_and_carry(rA,
+	           mix_word_negate(mix_word_get_field(f, *mem(M))),
+					NULL, &rA);
+	break;
+      case FLT:
+	rA = shorten(fsub(lengthen(rA), lengthen(*mem(M))));
+	break;
+      case DBL:
+	split_double(fsub(combine_to_double(rA, rX),
+			  combine_to_double(*mem(M),
+					    *mem(mix_short_add(M, 1)))),
+		     &rA, &rX);
+	break;
+      default:;
+      }
+      break;
+    case MUL:
+      a = misc_style[f];
+      switch(a) {
+      case MIX_INT:
+	mix_word_mul(rA, mix_word_get_field(f, *mem(M)),
+		     &rA, &rX);
+	break;
+      case FLT:
+	rA = shorten(fmul(lengthen(rA), lengthen(*mem(M))));
+	break;
+      case DBL:
+	split_double(fmul(combine_to_double(rA, rX),
+			  combine_to_double(*mem(M),
+					    *mem(mix_short_add(M, 1)))),
+		     &rA, &rX);
+	break;
+      case MX:
+	split_double(fmul(lengthen(rA), lengthen(*mem(M))),
+		     &rA, &rX);
+      default:;
+      }
+      break;
+    case DIV:
+      a = misc_style[f];
+      switch(a) {
+      case MIX_INT:
+	mix_word_div(rA, rX, mix_word_get_field(f, *mem(M)),
+		     &rA, &rX);
+	break;
+      case FLT:
+	rA = shorten(fdiv(lengthen(rA), lengthen(*mem(M))));
+	break;
+      case DBL:
+	split_double(fdiv(combine_to_double(rA, rX),
+			  combine_to_double(*mem(M),
+					    *mem(mix_short_add(M, 1)))),
+		     &rA, &rX);
+	break;
+      case MX:
+	rA = shorten(fdiv(combine_to_double(rA, rX),
+			  lengthen(*mem(M))));
+      default:;
+      }
+      break;
+    case EDA:
+      if(f & 1)
+	mix_short_reverse_sign(M);
+      if(f & 2)
+	rA = mix_short_to_word(M);
+      else
+	oflow |= mix_word_add_and_carry(rA, mix_short_to_word(M),
+					NULL, &rA);
+      break;
+    case EDX:
+      if(f & 1)
+	mix_short_reverse_sign(M);
+      if(f & 2)
+	rX = mix_short_to_word(M);
+      else
+	oflow |= mix_word_add_and_carry(rX, mix_short_to_word(M),
+					NULL, &rX);
+      break;
+    case EDi:
+      if(f & 1)
+	mix_short_reverse_sign(M);
+      if(f & 2)
+	rI[i] = M;
+      else
+	rI[i] = mix_short_add(rI[i], M);
+      break;
+    case CMPA:
+      a = misc_style[f];
+      switch(a) {
+      case MIX_INT:
+	comp = compare(mix_word_extract_field(f, rA),
+		       mix_word_extract_field(f, *mem(M)));
+	break;
+      case FLT:
+	comp = fcmp(lengthen(rA), lengthen(*mem(M)));
+	break;
+      case DBL:
+	comp = fcmp(combine_to_double(rA, rX),
+		    combine_to_double(*mem(M), *mem(mix_short_add(M, 1))));
+	break;
+      default:;
+      }
+      break;
+    case CMPX:
+      a = misc_style[f];
+      switch(a) {
+      case MIX_INT:
+	comp = compare(mix_word_extract_field(f, rX),
+		       mix_word_extract_field(f, *mem(M)));
+	break;
+      case FLT:
+	comp = fcmp(lengthen(rX), lengthen(*mem(M)));
+	break;
+      default:;
+      }
+      break;
+    case CMPi:
+      comp = compare(mix_word_extract_field(f,
+					    mix_short_to_word(rI[i])),
+		     mix_word_extract_field(f, *mem(M)));
+      break;
+    case JS:
+      j = js_style[f];
+    jmp:
+      if(j == SVJ)
+	ip = mix_short_sub(M, 1);
+      else if(j == OV || j == NOV) {
+	if((j != OV) ^ oflow) {
+	  rJ = mix_short_add(ip, 1);
+	  ip = mix_short_sub(M, 1);
+	}
+	oflow = false;
+      } else if(j & 1 << c) {
+	rJ = mix_short_add(ip, 1);
+	ip = mix_short_sub(M, 1);
+      }
+      break;
+    case JAS:
+      j = jrs_style[f & 15];
+      a = jas_style[f >> 3];
+      switch(a) {
+      case MIX_INT:
+	c = compare(rA, 0);
+	break;
+      case FLT:
+	c = fcmp(lengthen(rA), 0);
+	break;
+      case DBL:
+	c = fcmp(combine_to_double(rA, rX), 0);
+	break;
+      default:;
+      }
+      goto jmp;
+    case JXS:
+      j = jrs_style[f & 15];
+      a = jxs_style[f >> 3];
+      switch(a) {
+      case MIX_INT:
+	c = compare(rX, 0);
+	break;
+      case FLT:
+	c = fcmp(lengthen(rX), 0);
+	break;
+      default:;
+      }
+      goto jmp;
+    case JiS:
+      j = jrs_style[f];
+      c = compare(mix_short_to_word(rI[i]), 0);
+      goto jmp;
+    case IN:
+      input(mem(M), rX, f);
+      interrupt_req[f] |= mix_short_is_negative(ip);
+      break;
+    case OUT:
+      output(mem(M), rX, f);
+      interrupt_req[f] |= mix_short_is_negative(ip);
+      break;
+    case IOC:
+      if(isdisk[f])
+	t = rX;
+      else
+	t = mix_short_to_word(M);
+      cntrl(t, f);
+      interrupt_req[f] |= mix_short_is_negative(ip);
+      break;
+    case JRED:
+      if(ready(f)) {
+	rJ = mix_short_add(ip, 1);
+	ip = mix_short_sub(M, 1);
+      }
+      break;
+    case JBUS:
+      if(!ready(f)) {
+	if(ip == M && mix_short_is_negative(ip))
+	  interrupt_req[f] = false;
+	rJ = mix_short_add(ip, 1);
+	ip = mix_short_sub(M, 1);
+      }
+      break;
+    case MISC:
+      switch(f & 7) {
+      case 0: //NUM
+	inst = 0;
+	for(i = 1; i <= 5; i++)
+	  inst = inst * 10 + mix_word_get_byte(rA, i);
+	for(i = 1; i <= 5; i++)
+	  inst = inst * 10 + mix_word_get_byte(rX, i);
+	oflow = mix_word_is_negative(inst);
+	rA = mix_word_sign(rA) | mix_word_magnitude(inst);
+	break;
+      case 1: //CHAR
+	inst = mix_word_magnitude(rA);
+	for(i = 5; i >= 1; i--) {
+	  mix_word_set_byte(&rX, i, inst % 10 + 30);
+	  inst %= 10;
+	}
+	for(i = 5; i >= 1; i--) {
+	  mix_word_set_byte(&rX, i, inst % 10 + 30);
+	  inst %= 10;
 	}
 	break;
-	case MUL:
-	  a = misc_style[f];
-	  switch(a) {
-	  case MIX_INT:
-	    mix_word_mul(rA, mix_word_get_field(f, *mem(M)),
-		&rA, &rX);
-	    break;
-	  case FLT:
-	    rA = shorten(fmul(lengthen(rA), lengthen(*mem(M))));
-	    break;
-	  case DBL:
-	    split_double(fmul(combine_to_double(rA, rX),
-		combine_to_double(*mem(M), *mem(mix_short_add(M, 1)))),
-		&rA, &rX);
-	    break;
-	  case MX:
-	    split_double(fmul(lengthen(rA), lengthen(*mem(M))),
-		&rA, &rX);
-	  }
-	  break;
-	  case DIV:
-	    a = misc_style[f];
-	    switch(a) {
-	    case MIX_INT:
-	      mix_word_div(rA, rX, mix_word_get_field(f, *mem(M)),
-		  &rA, &rX);
-	      break;
-	    case FLT:
-	      rA = shorten(fdiv(lengthen(rA), lengthen(*mem(M))));
-	      break;
-	    case DBL:
-	      split_double(fdiv(combine_to_double(rA, rX),
-		  combine_to_double(*mem(M), *mem(mix_short_add(M, 1)))),
-		  &rA, &rX);
-	      break;
-	    case MX:
-	      rA = shorten(fdiv(combine_to_double(rA, rX),
-		  lengthen(*mem(M))));
-	    }
-	    break;
-	    case EDA:
-	      if(f & 1)
-		mix_short_reverse_sign(M);
-	      if(f & 2)
-		rA = mix_short_to_word(M);
-	      else
-		oflow |= mix_word_add_and_carry(rA, mix_short_to_word(M),
-		    NULL, &rA);
-	      break;
-	    case EDX:
-	      if(f & 1)
-		mix_short_reverse_sign(M);
-	      if(f & 2)
-		rX = mix_short_to_word(M);
-	      else
-		oflow |= mix_word_add_and_carry(rX, mix_short_to_word(M),
-		    NULL, &rX);
-	      break;
-	    case EDi:
-	      if(f & 1)
-		mix_short_reverse_sign(M);
-	      if(f & 2)
-		rI[i] = M;
-	      else
-		rI[i] = mix_short_add(rI[i], M);
-	      break;
-	    case CMPA:
-	      a = misc_style[f];
-	      switch(a) {
-	      case MIX_INT:
-		comp = compare(mix_word_extract_field(f, rA),
-		    mix_word_extract_field(f, *mem(M)));
-		break;
-	      case FLT:
-		comp = fcmp(lengthen(rA), lengthen(*mem(M)));
-		break;
-	      case DBL:
-		comp = fcmp(combine_to_double(rA, rX),
-		    combine_to_double(*mem(M), *mem(mix_short_add(M, 1))));
-		break;
-	      case MX:;
-	      }
-	      break;
-	      case CMPX:
-		a = misc_style[f];
-		switch(a) {
-		case MIX_INT:
-		  comp = compare(mix_word_extract_field(f, rX),
-		      mix_word_extract_field(f, *mem(M)));
-		  break;
-		case FLT:
-		  comp = fcmp(lengthen(rX), lengthen(*mem(M)));
-		  break;
-		default:;
-		}
-		break;
-		case CMPi:
-		  comp = compare(mix_word_extract_field(f,
-		      mix_short_to_word(rI[i])),
-		      mix_word_extract_field(f, *mem(M)));
-		  break;
-		case JS:
-		  j = js_style[f];
-		  jmp:
-		  if(j == SVJ)
-		    ip = mix_short_sub(M, 1);
-		  else if(j == OV || j == NOV) {
-		    if((j != OV) ^ oflow) {
-		      rJ = mix_short_add(ip, 1);
-		      ip = mix_short_sub(M, 1);
-		    }
-		    oflow = false;
-		  } else if(j & 1 << c) {
-		    rJ = mix_short_add(ip, 1);
-		    ip = mix_short_sub(M, 1);
-		  }
-		  break;
-		case JAS:
-		  j = jrs_style[f & 15];
-		  a = jas_style[f >> 3];
-		  switch(a) {
-		  case MIX_INT:
-		    c = compare(rA, 0);
-		    break;
-		  case FLT:
-		    c = fcmp(lengthen(rA), 0);
-		    break;
-		  case DBL:
-		    c = fcmp(combine_to_double(rA, rX), 0);
-		    break;
-		  case MX:;
-		  }
-		  goto jmp;
-		  case JXS:
-		    j = jrs_style[f & 15];
-		    a = jxs_style[f >> 3];
-		    switch(a) {
-		    case MIX_INT:
-		      c = compare(rX, 0);
-		      break;
-		    case FLT:
-		      c = fcmp(lengthen(rX), 0);
-		      break;
-		    default:;
-		    }
-		    goto jmp;
-		    case JiS:
-		      j = jrs_style[f];
-		      c = compare(mix_short_to_word(rI[i]), 0);
-		      goto jmp;
-		    case IN:
-		      input(mem(M), rX, f);
-		      interrupt_req[f] |= mix_short_is_negative(ip);
-		      break;
-		    case OUT:
-		      output(mem(M), rX, f);
-		      interrupt_req[f] |= mix_short_is_negative(ip);
-		      break;
-		    case IOC:
-		      if(isdisk[f])
-			t = rX;
-		      else
-			t = mix_short_to_word(M);
-			cntrl(t, f);
-		      interrupt_req[f] |= mix_short_is_negative(ip);
-		      break;
-		    case JRED:
-		      if(ready(f)) {
-			rJ = mix_short_add(ip, 1);
-			ip = mix_short_sub(M, 1);
-		      }
-		      break;
-		    case JBUS:
-		      if(!ready(f)) {
-			if(ip == M && mix_short_is_negative(ip))
-			  interrupt_req[f] = false;
-			rJ = mix_short_add(ip, 1);
-			ip = mix_short_sub(M, 1);
-		      }
-		      break;
-		    case MISC:
-		      switch(f & 7) {
-		      case 0: //NUM
-			inst = 0;
-			for(i = 1; i <= 5; i++)
-			  inst = inst * 10 + mix_word_get_byte(rA, i);
-			for(i = 1; i <= 5; i++)
-			  inst = inst * 10 + mix_word_get_byte(rX, i);
-			oflow = mix_word_is_negative(inst);
-			rA = mix_word_sign(rA) | mix_word_magnitude(inst);
-			break;
-		      case 1: //CHAR
-			inst = mix_word_magnitude(rA);
-			for(i = 5; i >= 1; i--) {
-			  mix_word_set_byte(&rX, i, inst % 10 + 30);
-			  inst %= 10;
-			}
-			for(i = 5; i >= 1; i--) {
-			  mix_word_set_byte(&rX, i, inst % 10 + 30);
-			  inst %= 10;
-			}
-			break;
-		      case 2: //HLT
-			running = false;
-			break;
-		      case 3: //LEN
-			split_double(lengthen(rA), &rA, &rX);
-			break;
-		      case 4: //SHR
-			rA = shorten(combine_to_double(rA, rX));
-			break;
-		      case 5: //FIX
-			split_double(fix(combine_to_double(rA, rX)), &rA, &rX);
-			break;
-		      case 6: //FLOT
-			split_double(flot(combine_to_double(rA, rX)), &rA, &rX);
-			break;
-		      case 7: //INT
-			if(mix_short_is_negative(ip))
-			  return_from_interrupt();
-			else
-			  perform_interrupt(12);
-		      }
-		      break;
-		      case SHFT:
-			switch(f) {
-			case 0: //SLA
-			  mix_word_sl(rA, 0, mix_word_magnitude(M), &rA, NULL);
-			  break;
-			case 1: //SRA
-			  mix_word_sr(rA, 0, mix_word_magnitude(M), &rA, NULL);
-			  break;
-			case 2: //SLAX
-			  mix_word_sl(rA, rX, mix_word_magnitude(M), &rA, &rX);
-			  break;
-			case 3: //SRAX
-			  mix_word_sr(rA, rX, mix_word_magnitude(M), &rA, &rX);
-			  break;
-			case 4: //SLC
-			  mix_word_slc(rA, rX, mix_word_magnitude(M), &rA, &rX);
-			  break;
-			case 5: //SRC
-			  mix_word_src(rA, rX, mix_word_magnitude(M), &rA, &rX);
-			}
-			break;
-			case MOV:
-			  time += 2 * f;
-			  while(f--) {
-			    *mem(rI[0]) = *mem(M);
-			    rI[0] = mix_short_add(rI[0], 1);
-			    M = mix_short_add(M, 1);
-			  }
-			  break;
-			case NOP:
-			  break;
+      case 2: //HLT
+	running = false;
+	break;
+      case 3: //LEN
+	split_double(lengthen(rA), &rA, &rX);
+	break;
+      case 4: //SHR
+	rA = shorten(combine_to_double(rA, rX));
+	break;
+      case 5: //FIX
+	split_double(fix(combine_to_double(rA, rX)), &rA, &rX);
+	break;
+      case 6: //FLOT
+	split_double(flot(combine_to_double(rA, rX)), &rA, &rX);
+	break;
+      case 7: //INT
+	if(mix_short_is_negative(ip))
+	  return_from_interrupt();
+	else
+	  perform_interrupt(12);
+      default:;
+      }
+      break;
+    case SHFT:
+      switch(f) {
+      case 0: //SLA
+	mix_word_sl(rA, 0, mix_word_magnitude(M), &rA, NULL);
+	break;
+      case 1: //SRA
+	mix_word_sr(rA, 0, mix_word_magnitude(M), &rA, NULL);
+	break;
+      case 2: //SLAX
+	mix_word_sl(rA, rX, mix_word_magnitude(M), &rA, &rX);
+	break;
+      case 3: //SRAX
+	mix_word_sr(rA, rX, mix_word_magnitude(M), &rA, &rX);
+	break;
+      case 4: //SLC
+	mix_word_slc(rA, rX, mix_word_magnitude(M), &rA, &rX);
+	break;
+      case 5: //SRC
+	mix_word_src(rA, rX, mix_word_magnitude(M), &rA, &rX);
+      default:;
+      }
+      break;
+    case MOV:
+      time += 2 * f;
+      while(f--) {
+	*mem(rI[0]) = *mem(M);
+	rI[0] = mix_short_add(rI[0], 1);
+	M = mix_short_add(M, 1);
+      }
+      break;
+    case NOP:
+      break;
+    default:;
     }
     time += op_time[op];
     if(!in_control_last && mix_short_is_positive(ip)) {

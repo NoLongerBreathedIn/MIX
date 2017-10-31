@@ -20,10 +20,6 @@
 #endif
 #define PRINTER_PAGE_LEN 22
 
-FILE *disk[8], *tape[8];
-
-FILE *cardreader, *cardpunch, *printer, *papertape;
-
 FILE *input_file[21], *output_file[21];
 void (*reader[21])(FILE *f, mix_word *buf, mix_word posn, int blocksize);
 void (*writer[21])(FILE *f, mix_word *buf, mix_word posn, int blocksize);
@@ -96,8 +92,11 @@ void *handle_ctl(void *stuff) {
 void input(mix_word *mem, mix_word posn, char device) {
   rw stuff;
   _Atomic rw foo;
-  pthread_t temp = atomic_load(threadID + device);
+  pthread_t temp;
   atomic_flag bar;
+  if((unsigned)device > 20)
+    return;
+  temp = atomic_load(threadID + device);
   if(temp)
     pthread_join(temp, NULL);
   stuff.func = reader[(int)device];
@@ -116,8 +115,11 @@ void input(mix_word *mem, mix_word posn, char device) {
 void output(mix_word *mem, mix_word posn, char device) {
   rw stuff;
   _Atomic rw foo;
-  pthread_t temp = atomic_load(threadID + (int)device);
+  pthread_t temp;
   atomic_flag bar;
+  if((unsigned)device > 20)
+    return;
+  temp = atomic_load(threadID + (int)device);
   if(temp)
     pthread_join(temp, NULL);
   stuff.func = writer[(int)device];
@@ -135,8 +137,11 @@ void output(mix_word *mem, mix_word posn, char device) {
 void cntrl(mix_word argument, char device) {
   ctl stuff;
   _Atomic ctl foo;
-  pthread_t temp = atomic_load(threadID + device);
-  atomic_flag(bar);
+  pthread_t temp;
+  atomic_flag bar;
+  if((unsigned)device > 20)
+    return;
+  temp = atomic_load(threadID + device);
   if(temp)
     pthread_join(temp, NULL);
   stuff.func = control[(int)device];
@@ -179,6 +184,8 @@ void write_disk(FILE *f, mix_word *buf, mix_word posn, int blocksize) {
 
 void setupIO(void) {
   int i;
+  FILE *disk[8], *tape[8];
+  FILE *cardreader, *cardpunch, *printer, *papertape, *tapepunch;
   char *name = "disk0.dev";
   for(i = 0; i < 8; i++) {
     disk[i] = fdopen(open(name, O_RDWR | O_CREAT, 0666), "r+");
@@ -189,10 +196,11 @@ void setupIO(void) {
     tape[i] = fdopen(open(name, O_RDWR | O_CREAT, 0666), "r+");
     name[4]++;
   }
-  cardreader = fdopen(open("cardrd.dev", O_RDONLY | O_CREAT, 0666), "r");
-  cardpunch = fopen("cardwr.dev", "a");
+  cardreader = fdopen(open("card.dev", O_RDONLY | O_CREAT, 0666), "r");
+  cardpunch = fopen("punch.dev", "a");
   printer = fopen("printer.dev", "w");
   papertape = fdopen(open("paper.dev", O_RDONLY | O_CREAT, 0666), "r");
+  tapepunch = fopen("tapep.dev", "w");
   for(i = 0; i < 21; i++)
     threadID[i] = NULL;
   for(i = 0; i < 8; i++) {
@@ -229,7 +237,7 @@ void setupIO(void) {
   writer[19] = write_char;
   bsize[19] = 14;
   input_file[20] = papertape;
-  output_file[20] = papertape;
+  output_file[20] = tapepunch;
   reader[20] = read_char;
   writer[20] = write_char;
   bsize[20] = 14;
