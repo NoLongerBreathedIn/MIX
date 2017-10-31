@@ -1,0 +1,8 @@
+/Debug
+*.o
+.DS_Store
+/mix
+/mixal
+/.cproject
+/.project
+/.settings
