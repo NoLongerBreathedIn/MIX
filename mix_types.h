@@ -28,7 +28,7 @@ typedef uint8_t mix_byte;
 
 typedef uint8_t mix_char;
 
-#define MIX_CHAR_MAX 55
+#define MIX_CHAR_MAX 63
 #define mix_char_new(l) (((l) < MIX_CHAR_MAX)?(l):MIX_CHAR_MAX)
 #define mix_char_to_byte(mc) mix_byte_new(mc)
 #define mix_byte_to_char(mb) mix_char_new(mb)

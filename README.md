@@ -56,6 +56,8 @@ change the first, second, and fifth lines to ` M [6`, ` Y [6`, and ` D [4` (`IN 
 and change all the 7s in `print_hunk` to 5s) the code becomes loadable onto paper tape, instead.
 To modify the emulator to act (at least when booting) as if there is no card reader, it suffices to change the `input(memp, 0, 16); while(!ready(16));` in `main` (`mix_cpu.c`) by replacing the `16` with `20`.
 
-The standard `MIXCII` characters Θ, Φ, and Π are replaced by tilde and open and close brackets.
+The standard "MIXCII" characters Θ, Φ, and Π are replaced by tilde and open and close brackets.
 A final set of eight characters is appended to the end of MIXCII, thus rendering the entire character set as
 `` ABCDEFGHI~JKLMNOPQR[]STUVWXYZ0123456789.,()+-*/=$<>@;:'`\"&{}|^``.
+On input to the computer, lowercase letters are capitalized.
+The assembler also works in MIXCII.
