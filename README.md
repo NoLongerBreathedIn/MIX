@@ -51,13 +51,13 @@ Bytes are 6 bits.
 
 The assembler is exactly to spec. This means that the format is fixed.
 It outputs code that can be loaded in to the card reader.
-With slight changes in `mixal.c` (in `print_preamble`, move the newline to after the `  CA.` (`JAZ  0,3`),
-change the first, second, and fifth lines to ` M [6`, ` Y [6`, and ` D [4` (`IN   14(20)`, `IN   28(20)` and `JBUS 4(20)`,
+With slight changes in `mixal.c` (in `print_preamble`, move the newline to after the `  CA.` (`JAZ  0,3`),
+change the first, second, and fifth lines to ` M [6`, ` Y [6`, and ` D [4` (`IN   14(20)`, `IN   28(20)` and `JBUS 4(20)`),
 and change all the 7s in `print_hunk` to 5s) the code becomes loadable onto paper tape, instead.
 To modify the emulator to act (at least when booting) as if there is no card reader, it suffices to change the `input(memp, 0, 16); while(!ready(16));` in `main` (`mix_cpu.c`) by replacing the `16` with `20`.
 
 The standard "MIXCII" characters Θ, Φ, and Π are replaced by tilde and open and close brackets.
 A final set of eight characters is appended to the end of MIXCII, thus rendering the entire character set as
-`` ABCDEFGHI~JKLMNOPQR[]STUVWXYZ0123456789.,()+-*/=$<>@;:'`\"&{}|^``.
+`` ABCDEFGHI~JKLMNOPQR[]STUVWXYZ0123456789.,()+-*/=$<>@;:'`\"&{}|^``.
 On input to the computer, lowercase letters are capitalized.
 The assembler also works in MIXCII.
