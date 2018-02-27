@@ -15,6 +15,7 @@
 // Ugly hack to get Eclipse to handle _Atomic correctly.
 #ifdef __CDT_PARSER__
 #define _Atomic
+typedef char atomic_flag;
 #else
 #include <stdatomic.h>
 #endif
