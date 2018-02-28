@@ -57,7 +57,11 @@ and change all the 7s in `print_hunk` to 5s) the code becomes loadable onto pape
 To modify the emulator to act (at least when booting) as if there is no card reader, it suffices to change the `input(memp, 0, 16); while(!ready(16));` in `main` (`mix_cpu.c`) by replacing the `16` with `20`.
 
 The standard "MIXCII" characters Θ, Φ, and Π are replaced by tilde and open and close brackets.
-A final set of eight characters is appended to the end of MIXCII, thus rendering the entire character set as
+A final set of eight characters is appended to the end of MIXCII, thus rendering the entire character set
 `` ABCDEFGHI~JKLMNOPQR[]STUVWXYZ0123456789.,()+-*/=$<>@;:'`\"&{}|^``.
 On input to the computer, lowercase letters are capitalized.
 The assembler also works in MIXCII.
+
+One further addition is that `J` is treated as `I7` for purposes of indexing.
+This allows return-from-leaf-subroutine to be done with a `JMP 0,7`,
+obviating some of the need for self-modifying code.

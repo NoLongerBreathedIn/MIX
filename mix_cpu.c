@@ -14,7 +14,8 @@
 
 bool oflow;
 
-mix_short rJ = 0, rI[6] = {0, 0, 0, 0, 0, 0};
+#define rJ (rI[6])
+mix_short rI[7] = {0, 0, 0, 0, 0, 0, 0};
 mix_short ip = 0;
 mix_comp_ind comp = ZERO;
 mix_word rA = 0, rX = 0;
@@ -50,7 +51,7 @@ int main(int argc, char **argv) {
     M = inst >> 18;
     op = decode[mix_word_get_byte(inst, 5)];
     i = mix_word_get_byte(inst, 5) - 1 & 7;
-    f = mix_word_get_byte(inst, 3) % 7;
+    f = mix_word_get_byte(inst, 3) & 7;
     if(f)
       M = mix_short_add(M, rI[f - 1]);
     f = mix_word_get_byte(inst, 4);
