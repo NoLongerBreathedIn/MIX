@@ -105,7 +105,7 @@ void input(mix_word *mem, mix_word posn, char device) {
   stuff.buf = mem;
   stuff.blocksize = bsize[(int)device];
   stuff.posn = posn;
-  atomic_flag_clear(stuff.read = &bar);
+  atomic_flag_test_and_set(stuff.read = &bar); // Init to taken.
   stuff.tid = threadID + device;
   atomic_store(&foo, stuff);
   pthread_create(&temp, NULL, handle_rw, (void *)&foo);
@@ -127,7 +127,7 @@ void output(mix_word *mem, mix_word posn, char device) {
   stuff.f = output_file[(int)device];
   stuff.buf = mem;
   stuff.blocksize = bsize[(int)device];
-  atomic_flag_clear(stuff.read = &bar);
+  atomic_flag_test_and_set(stuff.read = &bar); // Init to taken.
   stuff.tid = threadID + device;
   atomic_store(&foo, stuff);
   pthread_create(&temp, NULL, handle_rw, (void *)&foo);
