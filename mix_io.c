@@ -48,8 +48,8 @@ bool isdisk[21];
  * 3. If said thread ID is not 0, wait for that thread to finish.
  * 4. Copy data to input structure.
  * 5. Set input structure's threadID pointer.
- * 6. Set input structure's read to empty.
- * 7. Create a new thread running the handler, and set threadID correctly.
+ * 6. Set input structure's read to full.
+ * 7. Create a new thread running the handler.
  * 8. p(read)
  */
 
