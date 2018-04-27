@@ -94,7 +94,7 @@ void input(mix_word *mem, mix_word posn, char device) {
   rw stuff;
   _Atomic rw foo;
   pthread_t temp;
-  atomic_flag bar;
+  atomic_flag bar = ATOMIC_FLAG_INIT;
   if((unsigned)device > 20)
     return;
   temp = atomic_load(threadID + device);
@@ -107,7 +107,7 @@ void input(mix_word *mem, mix_word posn, char device) {
   stuff.posn = posn;
   atomic_flag_test_and_set(stuff.read = &bar); // Init to taken.
   stuff.tid = threadID + device;
-  atomic_store(&foo, stuff);
+  atomic_init(&foo, stuff);
   pthread_create(&temp, NULL, handle_rw, (void *)&foo);
   while(atomic_flag_test_and_set(stuff.read))
     sched_yield();
@@ -117,7 +117,7 @@ void output(mix_word *mem, mix_word posn, char device) {
   rw stuff;
   _Atomic rw foo;
   pthread_t temp;
-  atomic_flag bar;
+  atomic_flag bar = ATOMIC_FLAG_INIT;
   if((unsigned)device > 20)
     return;
   temp = atomic_load(threadID + (int)device);
@@ -129,7 +129,7 @@ void output(mix_word *mem, mix_word posn, char device) {
   stuff.blocksize = bsize[(int)device];
   atomic_flag_test_and_set(stuff.read = &bar); // Init to taken.
   stuff.tid = threadID + device;
-  atomic_store(&foo, stuff);
+  atomic_init(&foo, stuff);
   pthread_create(&temp, NULL, handle_rw, (void *)&foo);
   while(atomic_flag_test_and_set(stuff.read))
     sched_yield();
@@ -139,7 +139,7 @@ void cntrl(mix_word argument, char device) {
   ctl stuff;
   _Atomic ctl foo;
   pthread_t temp;
-  atomic_flag bar;
+  atomic_flag bar = ATOMIC_FLAG_INIT;
   if((unsigned)device > 20)
     return;
   temp = atomic_load(threadID + device);
@@ -149,9 +149,9 @@ void cntrl(mix_word argument, char device) {
   stuff.f = output_file[(int)device];
   stuff.operand = argument;
   stuff.blocksize = bsize[(int)device];
-  atomic_flag_clear(stuff.read = &bar);
+  atomic_flag_test_and_set(stuff.read = &bar);
   stuff.tid = threadID + device;
-  atomic_store(&foo, stuff);
+  atomic_init(&foo, stuff);
   pthread_create(&temp, NULL, handle_ctl, (void *)&foo);
   while(!stuff.read)
     sched_yield();
