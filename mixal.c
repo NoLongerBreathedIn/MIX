@@ -8,14 +8,14 @@
 #include "mix_encode.h"
 #include "mix_types.h"
 #include "lexparse.h"
-#include <stdio.h>
 #include <search.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include "mix_flotio.h"
 
 typedef struct {
-	char line[80];
+	char line[81];
 	mix_word inst;
 	mix_word instb;
 	mix_short memloc;
@@ -234,8 +234,7 @@ int readin(line_hunk *in) {
 
 bool readline(char *line) {
 	int i, j;
-	for(i = 0; i < 80; i++)
-		line[i] = 0;
+	memset(line, 0, 81);
 	fgets(line, 81, stdin);
 	i = strlen(line);
 	if(line[i - 1] == '\n')

@@ -32,12 +32,11 @@ void mix_init_types(void) {
       if((is_bad_field[F] = r < l || 5 < r))
 	shift[F] = mask[F] = 0;
       else {
-	int width = r - ((l == 0)? 1 : l) + 1;
+	int width = r - (l? l : 1) + 1;
 	mask[F] = ((1 << 6 * width) - 1) << (shift[F] = 6 * (5 - r));
       }
     }
-  for(l = 0; l < 128; l++)
-    ascii_to_mixcii_[l] = NONP_;
+  memset(ascii_to_mixcii_, NONP_, 128);
   for(l = 0; l <= MIX_CHAR_MAX; l++)
     ascii_to_mixcii_[(int)mixcii_to_ascii_[l]] = l;
   for(l = 0; l < 26; l++)

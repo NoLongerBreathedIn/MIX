@@ -10,6 +10,10 @@
 
 #include "mix_encode.h"
 
+#ifdef __CDT_PARSER__
+#define MIX_INT 22
+#endif
+
 mix_byte default_f[212] = {
 		0, 005, 6, 7,
 		005, 6, 7, 005, 6, 7, 14,

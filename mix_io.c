@@ -7,6 +7,7 @@
 
 
 #include "mix_io.h"
+#include "atomic_queue.h"
 #include <pthread.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -16,18 +17,33 @@
 #ifdef __CDT_PARSER__
 #define _Atomic
 typedef char atomic_flag;
+#define ATOMIC_FLAG_INIT 1;
+char atomic_flag_test_and_set(char *c) {
+  char w = *c;
+  *c = 1;
+  return(w);
+}
 #else
 #include <stdatomic.h>
 #endif
+
+#define P(x) while(atomic_flag_test_and_set(x)) pthread_yield()
+#define V atomic_flag_clear
+
 #define PRINTER_PAGE_LEN 22
 
-FILE *input_file[21], *output_file[21];
-void (*reader[21])(FILE *f, mix_word *buf, mix_word posn, int blocksize);
-void (*writer[21])(FILE *f, mix_word *buf, mix_word posn, int blocksize);
-void (*control[21])(FILE *f, mix_word operand, int blocksize);
-_Atomic pthread_t threadID[21];
+static FILE *input_file[21], *output_file[21];
+static void (*reader[21])(FILE *f, mix_word *buf,
+			  mix_word posn, int blocksize);
+static void (*writer[21])(FILE *f, mix_word *buf,
+			  mix_word posn, int blocksize);
+static void (*control[21])(FILE *f, mix_word operand, int blocksize);
+static atomic_flag running[21];
+static atomic_schar overwork, todo_l[21];
 int bsize[21];
 bool isdisk[21];
+static atomic_queue *ioq;
+static atomic_flag tcreate = ATOMIC_FLAG_INIT, work_guard = ATOMIC_FLAG_INIT;
 
 /*
  * All of the following five functions work together.
@@ -56,11 +72,9 @@ bool isdisk[21];
 typedef struct {
   void (*func)(FILE *f, mix_word *buf, mix_word posn, int blocksize);
   FILE *f;
-  mix_word *buf;
   mix_word posn;
   int blocksize;
-  _Atomic pthread_t *tid;
-  atomic_flag *read;
+  mix_word *buf;
 } rw;
 
 typedef struct {
@@ -68,117 +82,150 @@ typedef struct {
   FILE *f;
   mix_word operand;
   int blocksize;
-  _Atomic pthread_t *tid;
-  atomic_flag *read;
 } ctl;
 
-void *handle_rw(void *stuff) {
-  rw in = atomic_load((_Atomic rw *)stuff);
-  atomic_store(in.tid, pthread_self());
-  atomic_flag_clear(in.read);
-  in.func(in.f, in.buf, in.posn, in.blocksize);
-  atomic_store(in.tid, 0);
+typedef struct {
+  atomic_flag *sem;
+  atomic_flag begun;
+  atomic_char *cnt;
+  bool is_rw;
+  union {
+    ctl cs;
+    rw rws;
+  } dat;
+} todo;
+
+#define inc_todo(cnt) if(atomic_fetch_add(cnt, 1) == 0) \
+    atomic_fetch_add(&overwork, 1);
+#define dec_todo(cnt) if(atomic_fetch_sub(cnt, 1) == 1) \
+    atomic_fetch_sub(&overwork, 1);
+
+/* The next two functions work together.
+   The todo structure contains stuff that is unimportant for synchronization,
+   as well as three important variables:
+   begun -- a semaphore to do with whether the operation has begun
+   sem -- points to the semaphore for this particular device
+   cnt -- points to the task count for this device.
+   There are a few other important variables:
+   ioq -- a queue of work items, each associated with a semaphore
+   work_guard -- a semaphore about the work queue operations
+   overwork -- keeps track of how many more devices are busy
+   than there are worker threads
+
+   The functions dec_todo and inc_todo decrement/increment the appropriate
+   counter of operations on the device and, if appropriate,
+   also modify overwork.
+
+   worker does as follows:
+   1) p(work_guard)
+   2) decrement overwork
+   3) Try to get a queue item, call it t; if it's null, go to 
+   4) v(work_guard)
+   5) v(begun)
+   6) 
+
+*/
+
+
+static void *worker(void *unused) {
+  todo *t;
+  P(work_guard);
+  atomic_fetch_sub(&overwork, 1);
+  while((t = (todo *)atomic_dequeue(ioq)) != NULL) {
+    atomic_char *cnt;
+    V(work_guard)
+    V(&t->begun);
+    if(t->is_rw)
+      t->dat.rws.func(t->rws.f, t->rws.buf, t->rws.posn, t->rws.blocksize);
+    else
+      t->dat.cs.func(t->cs.f, t->cs.operand, t->cs.blocksize);
+    V(t->sem);
+    cnt = t->cnt;
+    free(t);
+    P(work_guard);
+    dec_todo(cnt);
+  }
+  atomic_fetch_sub(&overwork, 1);
+  V(work_guard);
   return(NULL);
 }
 
-void *handle_ctl(void *stuff) {
-  ctl in = atomic_load((_Atomic ctl *)stuff);
-  atomic_store(in.tid, pthread_self());
-  atomic_flag_clear(in.read);
-  in.func(in.f, in.operand, in.blocksize);
-  atomic_store(in.tid, 0);
-  return(NULL);
+static void submit(todo *stuff, char device) {
+  pthread_t ignore;
+  atomic_flag_test_and_set(&(stuff->begun = ATOMIC_FLAG_INIT));
+  atomic_enqueue(ioq, *stuff, stuff->sem = running + device);
+  P(work_guard);
+  inc_todo(stuff->cnt = todo_l + device);
+  if(atomic_load(overwork) > 0)
+    pthread_create(&ignore, NULL, worker, NULL);
+  V(work_guard);
+  P(&stuff->begun);
 }
 
 void input(mix_word *mem, mix_word posn, char device) {
-  rw stuff;
-  _Atomic rw foo;
-  pthread_t temp;
-  atomic_flag bar = ATOMIC_FLAG_INIT;
+  todo *stuff;
   if((unsigned)device > 20)
     return;
-  temp = atomic_load(threadID + device);
-  if(temp)
-    pthread_join(temp, NULL);
-  stuff.func = reader[(int)device];
-  stuff.f = input_file[(int)device];
-  stuff.buf = mem;
-  stuff.blocksize = bsize[(int)device];
-  stuff.posn = posn;
-  atomic_flag_test_and_set(stuff.read = &bar); // Init to taken.
-  stuff.tid = threadID + device;
-  atomic_init(&foo, stuff);
-  pthread_create(&temp, NULL, handle_rw, (void *)&foo);
-  while(atomic_flag_test_and_set(stuff.read))
-    sched_yield();
+  stuff = malloc(sizeof(todo));
+  stuff->dat.rws.func = reader[(int)device];
+  stuff->dat.rws.f = input_file[(int)device];
+  stuff->dat.rws.buf = mem;
+  stuff->dat.rws.blocksize = bsize[(int)device];
+  stuff->dat.rws.posn = posn;
+  stuff->is_rw = true;
+  submit(stuff, device);
 }
 
 void output(mix_word *mem, mix_word posn, char device) {
-  rw stuff;
-  _Atomic rw foo;
-  pthread_t temp;
-  atomic_flag bar = ATOMIC_FLAG_INIT;
+  todo *stuff;
   if((unsigned)device > 20)
     return;
-  temp = atomic_load(threadID + (int)device);
-  if(temp)
-    pthread_join(temp, NULL);
-  stuff.func = writer[(int)device];
-  stuff.f = output_file[(int)device];
-  stuff.buf = mem;
-  stuff.blocksize = bsize[(int)device];
-  atomic_flag_test_and_set(stuff.read = &bar); // Init to taken.
-  stuff.tid = threadID + device;
-  atomic_init(&foo, stuff);
-  pthread_create(&temp, NULL, handle_rw, (void *)&foo);
-  while(atomic_flag_test_and_set(stuff.read))
-    sched_yield();
+  stuff = malloc(sizeof(todo));
+  stuff->dat.rws.func = writer[(int)device];
+  stuff->dat.rws.f = output_file[(int)device];
+  stuff->dat.rws.buf = mem;
+  stuff->dat.rws.blocksize = bsize[(int)device];
+  stuff->dat.rws.posn = posn;
+  stuff->is_rw = true;
+  submit(stuff, device);
 }
 
 void cntrl(mix_word argument, char device) {
-  ctl stuff;
-  _Atomic ctl foo;
-  pthread_t temp;
-  atomic_flag bar = ATOMIC_FLAG_INIT;
+  todo *stuff;
   if((unsigned)device > 20)
     return;
-  temp = atomic_load(threadID + device);
-  if(temp)
-    pthread_join(temp, NULL);
-  stuff.func = control[(int)device];
-  stuff.f = output_file[(int)device];
-  stuff.operand = argument;
-  stuff.blocksize = bsize[(int)device];
-  atomic_flag_test_and_set(stuff.read = &bar);
-  stuff.tid = threadID + device;
-  atomic_init(&foo, stuff);
-  pthread_create(&temp, NULL, handle_ctl, (void *)&foo);
-  while(!stuff.read)
-    sched_yield();
+  stuff = malloc(sizeof(todo));
+  stuff->dat.cs.func = control[(int)device];
+  stuff->dat.cs.f = output_file[(int)device];
+  stuff->dat.cs.blocksize = bsize[(int)device];
+  stuff->dat.cs.argument = argument;
+  stuff->is_rw = false;
+  submit(stuff, device);
 }
 
 bool ready(char device) {
-  return(!atomic_load(threadID + device));
+  return(!atomic_load(todo_l + device));
 }
 
-void trivial_control(FILE *f, mix_word operand, int blocksize) {}
+static void trivial_control(FILE *f, mix_word operand, int blocksize) {}
 
-void trivialRW(FILE *f, mix_word *buf, mix_word posn, int blocksize) {}
+static void trivialRW(FILE *f, mix_word *buf, mix_word posn, int blocksize) {}
 
-void read_binary(FILE *f, mix_word *buf, mix_word posn, int blocksize);
-void read_char(FILE *f, mix_word *buf, mix_word posn, int blocksize);
-void write_binary(FILE *f, mix_word *buf, mix_word posn, int blocksize);
-void write_char(FILE *f, mix_word *buf, mix_word posn, int blocksize);
-void tape_control(FILE *f, mix_word operand, int blocksize);
-void disk_control(FILE *f, mix_word operand, int blocksize);
-void write_printer(FILE *f, mix_word *buf, mix_word posn, int blocksize);
-void printer_control(FILE *f, mix_word operand, int blocksize);
+static void read_binary(FILE *f, mix_word *buf, mix_word posn, int blocksize);
+static void read_char(FILE *f, mix_word *buf, mix_word posn, int blocksize);
+static void write_binary(FILE *f, mix_word *buf, mix_word posn, int blocksize);
+static void write_char(FILE *f, mix_word *buf, mix_word posn, int blocksize);
+static void tape_control(FILE *f, mix_word operand, int blocksize);
+static void disk_control(FILE *f, mix_word operand, int blocksize);
+static void write_printer(FILE *f, mix_word *buf,
+			  mix_word posn, int blocksize);
+static void printer_control(FILE *f, mix_word operand, int blocksize);
 
-void read_disk(FILE *f, mix_word *buf, mix_word posn, int blocksize) {
+static void read_disk(FILE *f, mix_word *buf, mix_word posn, int blocksize) {
   disk_control(f, posn, blocksize);
   read_binary(f, buf, posn, blocksize);
 }
-void write_disk(FILE *f, mix_word *buf, mix_word posn, int blocksize) {
+static void write_disk(FILE *f, mix_word *buf, mix_word posn, int blocksize) {
   disk_control(f, posn, blocksize);
   write_binary(f, buf, posn, blocksize);
 }
@@ -202,8 +249,10 @@ void setupIO(void) {
   printer = fopen("printer.dev", "w");
   papertape = fdopen(open("paper.dev", O_RDONLY | O_CREAT, 0666), "r");
   tapepunch = fopen("tapep.dev", "w");
-  for(i = 0; i < 21; i++)
-    threadID[i] = NULL;
+  for(i = 0; i < 21; i++) {
+    running[i] = ATOMIC_FLAG_INIT;
+    atomic_init(todo_l + i, 0);
+  }
   for(i = 0; i < 8; i++) {
     input_file[i] = output_file[i] = tape[i];
     input_file[i + 8] = output_file[i + 8] = disk[i];
@@ -248,9 +297,12 @@ void setupIO(void) {
   }
   control[18] = printer_control;
   control[20] = tape_control;
+  ioq = create_atomic_queue();
+  atomic_init(&workers, 0);
+  atomic_init(&todos, 0);
 }
 
-void read_char(FILE *f, mix_word *buf, mix_word posn, int blocksize) {
+static void read_char(FILE *f, mix_word *buf, mix_word posn, int blocksize) {
   char *line = calloc(blocksize * 5 + 1, sizeof(char));
   int len, i;
   fgets(line, blocksize * 5 + 1, f);
@@ -268,7 +320,7 @@ void read_char(FILE *f, mix_word *buf, mix_word posn, int blocksize) {
   free(line);
 }
 
-void write_char(FILE *f, mix_word *buf, mix_word posn, int blocksize) {
+static void write_char(FILE *f, mix_word *buf, mix_word posn, int blocksize) {
   char *line = calloc(blocksize * 5 + 1, sizeof(char));
   int i, len;
   for(i = 0; i < blocksize * 5; i += 5) {
@@ -285,7 +337,7 @@ void write_char(FILE *f, mix_word *buf, mix_word posn, int blocksize) {
   free(line);
 }
 
-void read_binary(FILE *f, mix_word *buf, mix_word posn, int blocksize) {
+static void read_binary(FILE *f, mix_word *buf, mix_word posn, int blocksize) {
   size_t wr = fread(buf, sizeof(mix_word), blocksize, f);
   if(wr == blocksize)
     return;
@@ -294,11 +346,12 @@ void read_binary(FILE *f, mix_word *buf, mix_word posn, int blocksize) {
     *buf++ = 0;
 }
 
-void write_binary(FILE *f, mix_word *buf, mix_word posn, int blocksize) {
+static void write_binary(FILE *f, mix_word *buf,
+			 mix_word posn, int blocksize) {
   fwrite(buf, sizeof(mix_word), blocksize, f);
 }
 
-void tape_control(FILE *f, mix_word operand, int blocksize) {
+static void tape_control(FILE *f, mix_word operand, int blocksize) {
   int32_t o = mix_word_magnitude(operand);
   if(o == 0)
     rewind(f);
@@ -309,20 +362,21 @@ void tape_control(FILE *f, mix_word operand, int blocksize) {
     rewind(f);
 }
 
-void disk_control(FILE *f, mix_word operand, int blocksize) {
+static void disk_control(FILE *f, mix_word operand, int blocksize) {
   int32_t o = mix_word_magnitude(operand);
   fseek(f, o * blocksize * sizeof(mix_word), SEEK_SET);
 }
 
 static int lines_left = PRINTER_PAGE_LEN;
-void write_printer(FILE *f, mix_word *buf, mix_word posn, int blocksize) {
+static void write_printer(FILE *f, mix_word *buf,
+			  mix_word posn, int blocksize) {
   lines_left--;
   if(lines_left == 0)
     lines_left = PRINTER_PAGE_LEN;
   write_char(f, buf, posn, blocksize);
 }
 
-void printer_control(FILE *f, mix_word operand, int blocksize) {
+static void printer_control(FILE *f, mix_word operand, int blocksize) {
   while(lines_left--)
     putc('\n', f);
   lines_left = PRINTER_PAGE_LEN;

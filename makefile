@@ -3,9 +3,9 @@ COMMON_C = mix_float.c mix_types.c
 COMMON_H = mix_types.h mix_float.h
 COMMON_O = mix_float.o mix_types.o
 
-CPU_C = mix_cpu.c mix_decode.c mix_io.c
-CPU_H = mix_decode.h mix_io.h
-CPU_O = mix_cpu.o mix_decode.o mix_io.o
+CPU_C = mix_cpu.c mix_decode.c mix_io.c atomic_queue.c
+CPU_H = mix_decode.h mix_io.h atomic_queue.h
+CPU_O = mix_cpu.o mix_decode.o mix_io.o atomic_queue.o
 
 ASM_C = mixal.c mix_flotio.c lexparse.c mix_encode.c
 ASM_H = mix_flotio.h lexparse.h mix_encode.h

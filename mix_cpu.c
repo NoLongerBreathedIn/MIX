@@ -5,12 +5,18 @@
  *      Author: eyal
  */
 
+// TODO: Change to functinos?
+
 #include <stdlib.h>
 
 #include "mix_types.h"
 #include "mix_io.h"
 #include "mix_float.h"
 #include "mix_decode.h"
+
+#ifdef __CDT_PARSER__
+#define MIX_INT 22
+#endif
 
 bool oflow;
 
@@ -34,7 +40,8 @@ int main(int argc, char **argv) {
   mix_init_types();
   setupIO();
   setup_decode();
-  memn = calloc(8191, sizeof(mix_word));
+  memn = calloc(8300, sizeof(mix_word));
+  // leave size for IN/OUT with high addresses and large block sizes.
   memp = memn + 4095;
   input(memp, 0, 16);
   while(!ready(16));
