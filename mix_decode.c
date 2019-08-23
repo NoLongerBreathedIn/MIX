@@ -8,32 +8,35 @@
 #include "mix_decode.h"
 
 internal_instr decode[64] = {
-		NOP,  ADD,  SUB,  MUL,  DIV,  MISC, SHFT, MOV,
-		LDA,  LDi,  LDi,  LDi,  LDi,  LDi,  LDi,  LDX,
-		LDA,  LDi,  LDi,  LDi,  LDi,  LDi,  LDi,  LDX,
-		STA,  STi,  STi,  STi,  STi,  STi,  STi,  STX,
-		STJ,  STZ,  JBUS, IOC,  IN,   OUT,  JRED, JS,
-		JAS,  JiS,  JiS,  JiS,  JiS,  JiS,  JiS,  JXS,
-		EDA,  EDi,  EDi,  EDi,  EDi,  EDi,  EDi,  EDX,
-		CMPA, CMPi, CMPi, CMPi, CMPi, CMPi, CMPi, CMPX
+	NOP,  ADD,  SUB,  MUL,  DIV,  MISC, SHFT, MOV,
+	LDA,  LDi,  LDi,  LDi,  LDi,  LDi,  LDi,  LDX,
+	LDA,  LDi,  LDi,  LDi,  LDi,  LDi,  LDi,  LDX,
+	STA,  STi,  STi,  STi,  STi,  STi,  STi,  STX,
+	STJ,  STZ,  JBUS, IOC,  IN,   OUT,  JRED, JS,
+	JAS,  JiS,  JiS,  JiS,  JiS,  JiS,  JiS,  JXS,
+	EDA,  EDi,  EDi,  EDi,  EDi,  EDi,  EDi,  EDX,
+	CMPA, CMPi, CMPi, CMPi, CMPi, CMPi, CMPi, CMPX
 };
 
 jump_type js_style[18] = {
-		ALL, SVJ, OV, NOV, LT, EQ, GT, GE, NE, LE, RE,
-		NGE, NGL, NLE, NL, GL, NG, NAN
+	ALL, SVJ, OV, NOV, LT, EQ, GT, GE, NE, LE, RE,
+	NGE, NGL, NLE, NL, GL, NG, NAN
 };
 
 jump_type jrs_style[16] = {
-		LT, EQ, GT, NL, NE, NG, NAN, 0,
-		NGE, NGL, NLE, GE, GL, LE, RE, 0
+	LT, EQ, GT, NL, NE, NG, NAN, 0,
+	NGE, NGL, NLE, GE, GL, LE, RE, 0
 };
 
-arith_type jas_style[5] = {
-		MIX_INT, FLT, FLT, DBL, DBL
+jump_type jxs_style[32] = {
+	LT, EQ, GT, NL, NE, NG, NAN, 0,
+	NGE, NGL, NLE, GE, GL, LE, RE, 0,
+	LT, EQ, GT, NL, NE, NG, NAN, 0,
+	LT, EQ, GT, NL, NE, NG, NAN, 0
 };
 
-arith_type jxs_style[3] = {
-		MIX_INT, FLT, FLT
+arith_type jas_style[4] = {
+	MIX_INT, FLT, FLT, DBL
 };
 
 arith_type misc_style[64];

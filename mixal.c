@@ -190,6 +190,12 @@ int main(int argc, char **argv) {
 							&& l->line[n + k] != ' ' && l->line[n + k]; k++);
 					f = mix_word_get_byte(compute_expr(l->line + n, k, frefs,
 							brefs, label_tree, l->memloc), 5);
+					if(l->i == BRED || l->i == BBUS)
+					  f |= 040;
+					else if(l->i == JRED || l->i == JBUS)
+					  f &= 037;
+					// For these, specifying the device
+					// only sets the low 5 bits of f.
 				}
 			}
 			l->inst = m << 18 | ind << 12 | f << 6 | op;

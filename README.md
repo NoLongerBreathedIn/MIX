@@ -47,6 +47,9 @@ When do we jump?
 | `NG`  | `NP` |                          | √             | √                     | √      |
 | `NC`  | `NR` |                          |               |                       | √      |
 
+For conditional jumps that save `J`, replace the `J`
+at the beginning by `B`.
+
 Bytes are 6 bits.
 
 The assembler is exactly to spec. This means that the format is fixed.

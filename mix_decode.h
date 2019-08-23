@@ -30,8 +30,8 @@ typedef enum {
 } arith_type;
 
 extern internal_instr decode[];
-extern jump_type js_style[], jrs_style[];
-extern arith_type jas_style[], jxs_style[];
+extern jump_type js_style[], jrs_style[], jxs_style[];
+extern arith_type jas_style[];
 extern arith_type misc_style[];
 extern int op_time[];
 

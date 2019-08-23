@@ -241,30 +241,32 @@ int main(int argc, char **argv) {
 		     mix_word_extract_field(f, *mem(M)));
       break;
     case JS:
-      j = js_style[f];
+      j = js_style[f & 037];
     jmp:
       if(j == SVJ)
 	ip = mix_short_sub(M, 1);
-      else if(j == OV || j == NOV) {
-	if((j != OV) ^ oflow) {
-	  rJ = mix_short_add(ip, 1);
-	  ip = mix_short_sub(M, 1);
-	}
+      else if(j & OV) { // OV or NOV
+	j = (j & 1 ^ oflow) * 15; // OV is even, so if OV and oflow,
+	// this works out to 15; similarly with NOV.
 	oflow = false;
-      } else if(j & 1 << c) {
-	rJ = mix_short_add(ip, 1);
+      }
+      if(j & 1 << c) { // SVJ is 0, so this won't trigger on JSJ.
+	if(~f & 040)
+	  rJ = mix_short_add(ip, 1);
 	ip = mix_short_sub(M, 1);
       }
       break;
     case JAS:
-      j = jrs_style[f & 15];
-      a = jas_style[f >> 3];
+      j = jrs_style[f & 017];
+      t = rA;
+    jmp_ax:
+      a = jas_style[f >> 3 & 3];
       switch(a) {
       case MIX_INT:
-	c = compare(rA, 0);
+	c = compare(t, 0);
 	break;
       case FLT:
-	c = fcmp(lengthen(rA), 0);
+	c = fcmp(lengthen(t), 0);
 	break;
       case DBL:
 	c = fcmp(combine_to_double(rA, rX), 0);
@@ -273,18 +275,9 @@ int main(int argc, char **argv) {
       }
       goto jmp;
     case JXS:
-      j = jrs_style[f & 15];
-      a = jxs_style[f >> 3];
-      switch(a) {
-      case MIX_INT:
-	c = compare(rX, 0);
-	break;
-      case FLT:
-	c = fcmp(lengthen(rX), 0);
-	break;
-      default:;
-      }
-      goto jmp;
+      j = jxs_style[f & 037];
+      t = rX;
+      goto jmp_ax;
     case JiS:
       j = jrs_style[f];
       c = compare(mix_short_to_word(rI[i]), 0);
