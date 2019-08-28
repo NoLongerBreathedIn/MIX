@@ -8,8 +8,9 @@
 
 #include "atomic_queue.h"
 #include <pthread.h>
+#include <stdlib.h>
 
-#define P_SEM(x) while(atomic_flag_test_and_set(&x)) pthread_yield()
+#define P_SEM(x) while(atomic_flag_test_and_set(&x)) sched_yield()
 #define V_SEM(x) atomic_flag_clear(&x)
 
 struct qelt {
@@ -25,10 +26,11 @@ struct aq {
 };
 
 
-atomic_queue *create_atomic_queue(bool internal_synch) {
+atomic_queue *create_atomic_queue() {
+  atomic_queue *r = malloc(sizeof(atomic_queue));
   r->begin = NULL;
   r->end = &r->begin;
-  r->atomic_flag = ATOMIC_FLAG_INIT;
+  r->lock = (atomic_flag)ATOMIC_FLAG_INIT;
   return(r);
 }
 
@@ -82,7 +84,7 @@ void *atomic_dequeue(atomic_queue *q) {
 
 bool atomic_queue_is_empty(atomic_queue *q) {
   bool ret;
-  P_SEM(q->lock)
+  P_SEM(q->lock);
   ret = q->begin == NULL;
   V_SEM(q->lock);
   return(ret);

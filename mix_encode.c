@@ -14,7 +14,7 @@
 #define MIX_INT 22
 #endif
 
-mix_byte default_f[320] = {
+mix_byte default_f[CON] = {
 	0, 005, 6, 7,
 	005, 6, 7, 005, 6, 7, 14,
 	005, 6, 7, 14, 0, 1, 2, 3, 4, 5, 6, 7,
@@ -67,7 +67,7 @@ mix_byte default_f[320] = {
 	005, 005, 005, 005, 6
 };
 
-mix_byte opcode[320] = {
+mix_byte opcode[CON] = {
 	0, 1, 1, 1,
 	2, 2, 2, 3, 3, 3, 3,
 	4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5,
@@ -117,7 +117,7 @@ mix_byte opcode[320] = {
 	52, 52, 52, 52, 53, 53, 53, 53,
 	54, 54, 54, 54, 55, 55, 55, 55,
 	56, 56, 56, 57, 58, 59,
-	60, 61, 62, 63, 63, 63
+	60, 61, 62, 63, 63
 };
 
 instruction instr_table[] = {
@@ -134,15 +134,15 @@ instruction instr_table[] = {
 	BGL, BGN, BGNN, BGNP, BGNR, BGNZ, BGP, BGPN,
 	BGPZ, BGRE, BGZ, BGZN, BLE, BN, BNC, BNE,
 	BNG, BNGE, BNGL, BNL, BNLE, BNOV, BOV, BRED,
-	BXN, BXNN, BXNP, BXNZ, BXP, BXZ, CHAR, CHR,
-	CMP1, CMP2, CMP3, CMP4, CMP5, CMP6, CMPA, CMPX,
+	BXN, BXNN, BXNP, BXNZ, BXP, BXZ, CHR, CHR,
+	CMP1, CMP2, CMP3, CMP4, CMP5, CMP6, MIX_CMPA, MIX_CMPX,
 	CON, DADD, MIX_DBL, DCMP, DDIV, DEC1, DEC2, DEC3,
 	DEC4, DEC5, DEC6, DECA, DECX, DFDV, MIX_DIV, DMUL,
 	DSUB, END, ENN1, ENN2, ENN3, ENN4, ENN5, ENN6,
 	ENNA, ENNX, ENT1, ENT2, ENT3, ENT4, ENT5, ENT6,
 	ENTA, ENTX, EQU, FADD, FCMP, FDIV, FDML, FIX,
 	FLOT, MIX_FLT, FMUL, FSUB, GCMP, HLT, MIX_IN, INC1,
-	INC2, INC3, INC4, INC5, INC6, INCA, INCX, INT,
+	INC2, INC3, INC4, INC5, INC6, INCA, INCX, MIX_INT,
 	MIX_IOC, J1N, J1NN, J1NP, J1NZ, J1P, J1Z, J2N,
 	J2NN, J2NP, J2NZ, J2P, J2Z, J3N, J3NN, J3NP,
 	J3NZ, J3P, J3Z, J4N, J4NN, J4NP, J4NZ, J4P,

@@ -10,11 +10,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
-
-typedef char bool;
-
-#define true (bool)1
-#define false (bool)0
+#include <stdbool.h>
 
 extern void mix_init_types(void);
 typedef uint8_t mix_byte;

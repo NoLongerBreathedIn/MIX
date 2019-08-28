@@ -23,7 +23,7 @@ typedef struct aq atomic_queue;
 
 extern atomic_queue *create_atomic_queue();
 // Returns true if destruction was successful.
-extern bool destroy_atomic_queue(void);
+extern bool destroy_atomic_queue(atomic_queue *q);
 extern void atomic_enqueue(atomic_queue *q, void *obj, atomic_flag *elt_lock);
 
 /* Acquires the flag associated to the element it returns. */

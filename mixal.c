@@ -192,7 +192,7 @@ int main(int argc, char **argv) {
 							brefs, label_tree, l->memloc), 5);
 					if(l->i == BRED || l->i == BBUS)
 					  f |= 040;
-					else if(l->i == JRED || l->i == JBUS)
+					else if(l->i == MIX_JRED || l->i == MIX_JBUS)
 					  f &= 037;
 					// For these, specifying the device
 					// only sets the low 5 bits of f.

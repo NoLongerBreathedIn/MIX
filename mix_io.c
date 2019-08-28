@@ -17,7 +17,7 @@
 #ifdef __CDT_PARSER__
 #define _Atomic
 typedef char atomic_flag;
-#define ATOMIC_FLAG_INIT 1;
+#define ATOMIC_FLAG_INIT 0;
 char atomic_flag_test_and_set(char *c) {
   char w = *c;
   *c = 1;
@@ -25,10 +25,11 @@ char atomic_flag_test_and_set(char *c) {
 }
 #else
 #include <stdatomic.h>
+#define atomic_flag_init (atomic_flag)ATOMIC_FLAG_INIT
 #endif
 
-#define P(x) while(atomic_flag_test_and_set(x)) pthread_yield()
-#define V atomic_flag_clear
+#define P(x) do { while(atomic_flag_test_and_set(&x)) sched_yield(); } while(0)
+#define V(x) atomic_flag_clear(&x)
 
 #define PRINTER_PAGE_LEN 22
 
@@ -133,12 +134,13 @@ static void *worker(void *unused) {
   atomic_fetch_sub(&overwork, 1);
   while((t = (todo *)atomic_dequeue(ioq)) != NULL) {
     atomic_char *cnt;
-    V(work_guard)
-    V(&t->begun);
+    V(work_guard);
+    V(t->begun);
     if(t->is_rw)
-      t->dat.rws.func(t->rws.f, t->rws.buf, t->rws.posn, t->rws.blocksize);
+      t->dat.rws.func(t->dat.rws.f, t->dat.rws.buf,
+		      t->dat.rws.posn, t->dat.rws.blocksize);
     else
-      t->dat.cs.func(t->cs.f, t->cs.operand, t->cs.blocksize);
+      t->dat.cs.func(t->dat.cs.f, t->dat.cs.operand, t->dat.cs.blocksize);
     V(t->sem);
     cnt = t->cnt;
     free(t);
@@ -152,14 +154,15 @@ static void *worker(void *unused) {
 
 static void submit(todo *stuff, char device) {
   pthread_t ignore;
-  atomic_flag_test_and_set(&(stuff->begun = ATOMIC_FLAG_INIT));
-  atomic_enqueue(ioq, *stuff, stuff->sem = running + device);
+  stuff->begun = atomic_flag_init;
+  atomic_flag_test_and_set(&stuff->begun);
+  atomic_enqueue(ioq, stuff, stuff->sem = running + device);
   P(work_guard);
   inc_todo(stuff->cnt = todo_l + device);
-  if(atomic_load(overwork) > 0)
+  if(atomic_load(&overwork) > 0)
     pthread_create(&ignore, NULL, worker, NULL);
   V(work_guard);
-  P(&stuff->begun);
+  P(stuff->begun);
 }
 
 void input(mix_word *mem, mix_word posn, char device) {
@@ -198,7 +201,7 @@ void cntrl(mix_word argument, char device) {
   stuff->dat.cs.func = control[(int)device];
   stuff->dat.cs.f = output_file[(int)device];
   stuff->dat.cs.blocksize = bsize[(int)device];
-  stuff->dat.cs.argument = argument;
+  stuff->dat.cs.operand = argument;
   stuff->is_rw = false;
   submit(stuff, device);
 }
@@ -250,7 +253,7 @@ void setupIO(void) {
   papertape = fdopen(open("paper.dev", O_RDONLY | O_CREAT, 0666), "r");
   tapepunch = fopen("tapep.dev", "w");
   for(i = 0; i < 21; i++) {
-    running[i] = ATOMIC_FLAG_INIT;
+    running[i] = atomic_flag_init;
     atomic_init(todo_l + i, 0);
   }
   for(i = 0; i < 8; i++) {
@@ -298,8 +301,7 @@ void setupIO(void) {
   control[18] = printer_control;
   control[20] = tape_control;
   ioq = create_atomic_queue();
-  atomic_init(&workers, 0);
-  atomic_init(&todos, 0);
+  atomic_init(&overwork, 0);
 }
 
 static void read_char(FILE *f, mix_word *buf, mix_word posn, int blocksize) {

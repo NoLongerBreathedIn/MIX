@@ -7,6 +7,7 @@
 #include "mix_types.h"
 #include <ctype.h>
 #include <assert.h>
+#include <string.h>
 static bool is_bad_field[MIX_BYTE_MAX + 1];
 static unsigned shift[MIX_BYTE_MAX + 1];
 static long mask[MIX_BYTE_MAX + 1];
